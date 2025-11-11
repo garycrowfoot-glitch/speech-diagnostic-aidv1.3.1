@@ -106,28 +106,53 @@ def transcribe_audio_to_text(audio_file):
     except Exception as e:
         return None, False, f"Transcription error: {str(e)}"
 
+
 def text_to_ipa(text):
     """
-    Convert English text to IPA using epitran
+    Convert English text to IPA using epitran with a safe fallback.
     Returns: (ipa_string, success_flag, error_message)
     """
     try:
         import epitran
-        
-        # Initialize epitran for English (Australian or General American)
-        # Australian English would be 'eng-Latn-aus' if available, fallback to general
-        epi = epitran.Epitran('eng-Latn')
-        
-        # Convert to IPA
-        ipa = epi.transliterate(text)
-        
-        # Wrap in forward slashes
+
+        # 1) Validate input early
+        text = (text or "").strip()
+        if not text:
+            return None, False, "Input text is empty after transcription."
+
+        # 2) Try preferred English backend (FliteLexLookup for eng-Latn).
+        #    If Flite is missing, gracefully fall back to SimpleEpitran.
+        try:
+            epi = epitran.Epitran('eng-Latn')
+        except Exception as e:
+            try:
+                from epitran.simple import SimpleEpitran
+                epi = SimpleEpitran('eng-Latn')
+            except Exception as se:
+                return None, False, f"Epitran initialization failed: {type(se).__name__}: {repr(se)}"
+
+        # 3) Token-wise transliteration to avoid punctuation/mixed-content issues
+        tokens = text.split()
+        ipa_tokens = []
+        for t in tokens:
+            try:
+                seg = epi.transliterate(t)
+                ipa_tokens.append(seg if seg else t)  # keep token if no IPA
+            except Exception:
+                ipa_tokens.append(t)  # don't break on single-token errors
+
+        ipa = " ".join(ipa_tokens).strip()
+        if not ipa:
+            return None, False, "Epitran returned empty IPA for the input."
+
+        # 4) Wrap in forward slashes to denote phonemic transcription
         return f"/{ipa}/", True, None
-        
+
     except ImportError:
         return None, False, "Epitran library not installed. Please add 'epitran' to requirements.txt"
     except Exception as e:
-        return None, False, f"IPA conversion error: {str(e)}"
+        # Always include type+repr to avoid blank errors
+        return None, False, f"IPA conversion error: {type(e).__name__}: {repr(e)}"
 
 def audio_to_ipa_pipeline(audio_file, reference_phrase):
     """
@@ -878,4 +903,5 @@ st.markdown(
     </div>
     """,
     unsafe_allow_html=True
+
 )

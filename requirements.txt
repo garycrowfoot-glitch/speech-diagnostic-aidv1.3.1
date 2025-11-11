@@ -2,4 +2,4 @@ streamlit>=1.31.0
 pandas>=2.0.0
 fpdf>=1.7.2
 openai
-epitran[full]
+epitran

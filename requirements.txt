@@ -1,5 +1,12 @@
 streamlit>=1.31.0
 pandas>=2.0.0
 fpdf>=1.7.2
-openai
-epitran
+openai>=1.0.0
+transformers>=4.44.0
+torch>=2.2.0
+torchaudio>=2.2.0
+librosa
+phonemizer>=3.3.0
+eng-to-ipa
+numpy
+
